@@ -177,6 +177,15 @@ export default class BrowserCapabilities extends BrowserDetection {
     }
 
     /**
+     * Checks if stops the video by adjusting the RTP direction to 'recvonly` in PlanB.
+     *
+     * @return {boolean}
+     */
+    usesPlanBMediaDirectionToStopVideo() {
+        return this.isReactNative() && this.usesPlanB();
+    }
+
+    /**
      * Checks if the browser uses SDP munging for turning on simulcast.
      *
      * @returns {boolean}

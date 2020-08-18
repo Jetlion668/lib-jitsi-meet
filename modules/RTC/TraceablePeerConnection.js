@@ -443,6 +443,11 @@ TraceablePeerConnection.prototype._getDesiredMediaDirection = function(
         mediaTransferActive = this.videoTransferActive;
     }
     if (mediaTransferActive) {
+        if (browser.usesPlanBMediaDirectionToStopVideo()
+            && mediaType === MediaType.VIDEO && this.senderVideoMaxHeight === 0) {
+            return 'recvonly';
+        }
+
         return this.hasAnyTracksOfType(mediaType) ? 'sendrecv' : 'recvonly';
     }
 
@@ -1839,12 +1844,11 @@ TraceablePeerConnection.prototype._adjustLocalMediaDirection = function(
 
         if (audioMedia.direction !== desiredAudioDirection) {
             audioMedia.direction = desiredAudioDirection;
-            logger.info(
-                `Adjusted local audio direction to ${desiredAudioDirection}`);
+            logger.info(`${this} adjusted local audio direction to ${desiredAudioDirection}`);
             modifiedDirection = true;
         }
     } else {
-        logger.warn('No "audio" media found int the local description');
+        logger.warn(`${this} no "audio" media found int the local description`);
     }
 
     const videoMedia = transformer.selectMedia('video');
@@ -1855,12 +1859,11 @@ TraceablePeerConnection.prototype._adjustLocalMediaDirection = function(
 
         if (videoMedia.direction !== desiredVideoDirection) {
             videoMedia.direction = desiredVideoDirection;
-            logger.info(
-                `Adjusted local video direction to ${desiredVideoDirection}`);
+            logger.info(`${this} adjusted video direction to ${desiredVideoDirection}`);
             modifiedDirection = true;
         }
     } else {
-        logger.warn('No "video" media found in the local description');
+        logger.warn(`${this} no "video" media found in the local description`);
     }
 
     if (modifiedDirection) {
@@ -2167,17 +2170,22 @@ TraceablePeerConnection.prototype.setSenderVideoConstraint = function(frameHeigh
         throw new Error(`Invalid frameHeight: ${frameHeight}`);
     }
 
-    // XXX: This is not yet supported on mobile.
-    if (browser.isReactNative()) {
-        return Promise.resolve();
-    }
-
     // Need to explicitly check for null as 0 is falsy, but a valid value
     const newHeight = frameHeight === null ? this.senderVideoMaxHeight : frameHeight;
+    const isToOrFromStoppedVideoTransition = newHeight === 0 || this.senderVideoMaxHeight === 0;
 
     this.senderVideoMaxHeight = newHeight;
 
     logger.log(`${this} senderVideoMaxHeight: ${newHeight}`);
+
+    // RN stops/resumes sending by flipping the media direction
+    if (browser.usesPlanBMediaDirectionToStopVideo()) {
+        if (isToOrFromStoppedVideoTransition) {
+            this.onnegotiationneeded && this.onnegotiationneeded();
+        }
+
+        return Promise.resolve();
+    }
 
     const localVideoTrack = this.getLocalVideoTrack();
 

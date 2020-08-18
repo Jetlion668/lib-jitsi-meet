@@ -549,9 +549,12 @@ export default class JingleSessionPC extends JingleSession {
             const state = this.peerconnection.signalingState;
             const remoteDescription = this.peerconnection.remoteDescription;
 
-            if (browser.usesUnifiedPlan() && state === 'stable'
-                && remoteDescription && typeof remoteDescription.sdp === 'string') {
-                logger.debug(`onnegotiationneeded fired on ${this.peerconnection} in state: ${state}`);
+            logger.info(`${this} onnegotiationneeded fired in state: ${state}`);
+
+            if ((browser.usesUnifiedPlan() || browser.usesPlanBMediaDirectionToStopVideo())
+                && state === 'stable'
+                && remoteDescription
+                && typeof remoteDescription.sdp === 'string') {
                 const workFunction = finishedCallback => {
                     const oldSdp = new SDP(this.peerconnection.localDescription.sdp);
 
@@ -569,9 +572,9 @@ export default class JingleSessionPC extends JingleSession {
                     workFunction,
                     error => {
                         if (error) {
-                            logger.error('onnegotiationneeded error', error);
+                            logger.error(`${this} onnegotiationneeded error`, error);
                         } else {
-                            logger.debug('onnegotiationneeded executed - OK');
+                            logger.info(`${this} onnegotiationneeded executed - OK`);
                         }
                     });
             }
